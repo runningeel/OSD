@@ -1,5 +1,5 @@
 #================================================================================================
-#   Author:     Niklas Axelsson
+#   Author:     N/A
 #   Date:       Ocotber 1, 2021
 #   Purpose:    This script set the needed configuration to install the base image 
 #               for 20H2 and also install drivers and Windows updates to latest as needed.
