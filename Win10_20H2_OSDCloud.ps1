@@ -9,8 +9,8 @@ $Params = @{
     OSBuild     = $Global:OSBuild
     OSEdition   = "Enterprise"
     Culture     = "en-us"
-    SkipAutopilot = $false
-	Restart		= $false
+    SkipAutopilot = $true
+    Restart	= $true
     SkipODT     = $true
     ZTI         = $true
 }
