@@ -33,7 +33,7 @@ Install-Module OSDProgress -Force
 Write-Host -ForegroundColor Green "Importing OSDProgress PowerShell Module"
 Import-Module OSD -Force
 
-Watch-OSDCloudProvisioning { Start-OSDCloud @Params }
+Watch-OSDCloudProvisioning -Window -Style Win10 -Verbose { Start-OSDCloud @Params }
 
 #================================================================================================
 #   WinPE PostOS
