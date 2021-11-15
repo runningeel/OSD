@@ -4,138 +4,107 @@
 #   Purpose:    This script set the needed configuration to install the base image 
 #               for 21H1 and also install drivers and Windows updates to latest as needed.
 #================================================================================================
+#Make sure I have the latest OSD Content
+Install-Module OSD -Force
+Import-Module OSD -Force
+Install-Module OSDProgress -Force
+Import-Module OSDProgress -Force
+
 $Global:OSBuild = "21H1"
 $Params = @{
     OSBuild     = $Global:OSBuild
     OSEdition   = "Enterprise"
-    Culture     = "en-us"
+    OSLanguage = "en-us"
     SkipAutopilot = $true
-    Restart	= $true
     SkipODT     = $true
     ZTI         = $true
+    Restart	= $true
 }
-
-Write-Host -ForegroundColor Green "Starting OSDCloud ZTI"
-Start-Sleep -Seconds 5
 
 #Change Display Resolution for Virtual Machine
 if ((Get-MyComputerModel) -match 'Virtual') {
     Write-Host -ForegroundColor Green "Setting Display Resolution to 1600x"
     Set-DisRes 1600
 }
-#Make sure I have the latest OSD Content
-Write-Host -ForegroundColor Green "Updating OSD PowerShell Module"
-Install-Module OSD -Force
-Write-Host -ForegroundColor Green "Importing OSD PowerShell Module"
-Import-Module OSD -Force
-Write-Host -ForegroundColor Green "Updating OSDProgress PowerShell Module"
-Install-Module OSDProgress -Force
-Write-Host -ForegroundColor Green "Importing OSDProgress PowerShell Module"
-Import-Module OSD -Force
 
 Watch-OSDCloudProvisioning -Window -Style Win10 -Verbose { Start-OSDCloud @Params }
 
 #================================================================================================
 #   WinPE PostOS
-#   Set Install-Updates.ps1
+#   AutopilotOOBE Offline Staging
 #================================================================================================
-$SetCommand = @'
-Function Install-MSUpdates{
-    param (
-        $LocationLCU = 'C:\MSUpdates\LCU',
-        $LocationDotNet = 'C:\MSUpdates\DotNet'
-    )
-    $UpdatesLCU = (Get-ChildItem $LocationLCU | Where-Object {$_.Extension -eq '.msu'} | Sort-Object {$_.LastWriteTime} )
-    $UpdatesDotNet = (Get-ChildItem $LocationDotNet | Where-Object {$_.Extension -eq '.msu'} | Sort-Object {$_.LastWriteTime} )
-    Set-Location -Path $LocationLCU
-    foreach ($Update in $UpdatesLCU)
-    {
-        Write-Host "Expanding $Update"
-        expand -f:* $Update.FullName .
-    }  
-    $UpdatesLCU = (Get-ChildItem $LocationLCU | Where-Object {$_.Extension -eq '.cab'} | Sort-Object {$_.LastWriteTime} )
-    foreach ($Update in $UpdatesLCU)
-    {
-        Write-Host "Installing $Update"
-        Add-WindowsPackage -Online -PackagePath $Update.FullName -NoRestart -ErrorAction SilentlyContinue
-    }  
-    Set-Location -Path $LocationDotNet
-    foreach ($Update in $UpdatesDotNet)
-    {
-        Write-Host "Expanding $Update"
-        expand -f:* $Update.FullName .
-    }  
-    $UpdatesDotNet = (Get-ChildItem $LocationDotNet | Where-Object {$_.Extension -eq '.cab'} | Sort-Object {$_.LastWriteTime} )
-    foreach ($Update in $UpdatesDotNet)
-    {
-        Write-Host "Installing $Update"
-        Add-WindowsPackage -Online -PackagePath $Update.FullName -NoRestart -ErrorAction SilentlyContinue
-    }     
+Install-Module AutopilotOOBE -Force
+Import-Module AutopilotOOBE -Force
+
+$Params = @{
+    Title = 'OSDeploy Autopilot Registration'
+    GroupTag = 'standard'
+    Hidden = 'AddToGroup','AssignedComputerName','AssignedUser','PostAction'
+    Assign = $true
+    Docs = 'https://autopilotoobe.osdeploy.com/'
 }
-Install-MSUpdates
-'@
-$SetCommand | Out-File -FilePath "C:\Windows\Install-Updates.ps1" -Encoding ascii -Force
-
-#================================================================================================
-#   Download latest Windows update from Microsoft
-#================================================================================================
-Save-MsUpCatUpdate -Arch x64 -Build $Global:OSBuild -Category DotNetCU -Latest -DestinationDirectory C:\MSUpdates\DotNet
-Save-MsUpCatUpdate -Arch x64 -Build $Global:OSBuild -Category LCU -Latest -DestinationDirectory C:\MSUpdates\LCU
-
-#================================================================================================
-#   PostOS
-#   Installing driver and update Microsoft patches
-#   during specialize phase
-#================================================================================================
-$UnattendXml = @'
-<?xml version='1.0' encoding='utf-8'?>
-<unattend xmlns="urn:schemas-microsoft-com:unattend">
-    <settings pass="specialize">
-        <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <RunSynchronous>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>1</Order>
-                    <Description>OSDCloud Specialize</Description>
-                    <Path>Powershell -ExecutionPolicy Bypass -Command Invoke-OSDSpecialize -Verbose</Path>
-                </RunSynchronousCommand>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>2</Order>
-                    <Description>Install Windows Update</Description>
-                    <Path>Powershell -ExecutionPolicy Bypass -File C:\Windows\Install-Updates.ps1</Path>
-                </RunSynchronousCommand>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>3</Order>
-                    <Description>Remove Windows Update Files</Description>
-                    <Path>Powershell -ExecutionPolicy Bypass -Command Remove-Item -Path C:\MSUpdates -Recurse</Path>
-                </RunSynchronousCommand>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>4</Order>
-                    <Description>Remove OSDCloud Temp Files</Description>
-                    <Path>Powershell -ExecutionPolicy Bypass -Command Remove-Item -Path C:\OSDCloud -Recurse</Path>
-                </RunSynchronousCommand>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>5</Order>
-                    <Description>Remove Drivers Temp Files</Description>
-                    <Path>Powershell -ExecutionPolicy Bypass -Command Remove-Item -Path C:\Drivers -Recurse</Path>
-                </RunSynchronousCommand>                  
-            </RunSynchronous>
-        </component>
-    </settings>    
-</unattend>
-'@
-#================================================================================================
-#   Set Unattend.xml
-#================================================================================================
-$PantherUnattendPath = 'C:\Windows\Panther'
-if (-NOT (Test-Path $PantherUnattendPath)) {
-    New-Item -Path $PantherUnattendPath -ItemType Directory -Force | Out-Null
+AutopilotOOBE @Params
+#================================================
+#   WinPE PostOS Sample
+#   OOBEDeploy Offline Staging
+#================================================
+$Params = @{
+    Autopilot = $true
+    RemoveAppx = "CommunicationsApps","OfficeHub","People","Skype","Solitaire","Xbox","ZuneMusic","ZuneVideo"
+    UpdateDrivers = $true
+    UpdateWindows = $true
 }
-$UnattendPath = Join-Path $PantherUnattendPath 'Invoke-OSDSpecialize.xml'
-$UnattendXml | Out-File -FilePath $UnattendPath -Encoding utf8
-Use-WindowsUnattend -Path 'C:\' -UnattendPath $UnattendPath -Verbose
-
-#================================================================================================
+Start-OOBEDeploy @Params
+#================================================
 #   WinPE PostOS
-#   Restart Computer
-#================================================================================================
+#   Set OOBEDeploy CMD.ps1
+#================================================
+$SetCommand = @'
+@echo off
+:: Set the PowerShell Execution Policy
+PowerShell -NoL -Com Set-ExecutionPolicy RemoteSigned -Force
+:: Add PowerShell Scripts to the Path
+set path=%path%;C:\Program Files\WindowsPowerShell\Scripts
+:: Open and Minimize a PowerShell instance just in case
+start PowerShell -NoL -W Mi
+:: Install the latest OSD Module
+start "Install-Module OSD" /wait PowerShell -NoL -C Install-Module OSD -Force -Verbose
+:: Start-OOBEDeploy
+:: There are multiple example lines. Make sure only one is uncommented
+:: The next line assumes that you have a configuration saved in C:\ProgramData\OSDeploy\OSDeploy.OOBEDeploy.json
+REM start "Start-OOBEDeploy" PowerShell -NoL -C Start-OOBEDeploy
+:: The next line assumes that you do not have a configuration saved in or want to ensure that these are applied
+start "Start-OOBEDeploy" PowerShell -NoL -C Start-OOBEDeploy -AddNetFX3 -UpdateDrivers -UpdateWindows
+exit
+'@
+$SetCommand | Out-File -FilePath "C:\Windows\OOBEDeploy.cmd" -Encoding ascii -Force
+#================================================
+#   WinPE PostOS
+#   Set AutopilotOOBE CMD.ps1
+#================================================
+$SetCommand = @'
+@echo off
+:: Set the PowerShell Execution Policy
+PowerShell -NoL -Com Set-ExecutionPolicy RemoteSigned -Force
+:: Add PowerShell Scripts to the Path
+set path=%path%;C:\Program Files\WindowsPowerShell\Scripts
+:: Open and Minimize a PowerShell instance just in case
+start PowerShell -NoL -W Mi
+:: Install the latest AutopilotOOBE Module
+start "Install-Module AutopilotOOBE" /wait PowerShell -NoL -C Install-Module AutopilotOOBE -Force -Verbose
+:: Start-AutopilotOOBE
+:: There are multiple example lines. Make sure only one is uncommented
+:: The next line assumes that you have a configuration saved in C:\ProgramData\OSDeploy\OSDeploy.AutopilotOOBE.json
+REM start "Start-AutopilotOOBE" PowerShell -NoL -C Start-AutopilotOOBE
+:: The next line is how you would apply a CustomProfile
+REM start "Start-AutopilotOOBE" PowerShell -NoL -C Start-AutopilotOOBE -CustomProfile OSDeploy
+:: The next line is how you would configure everything from the command line
+start "Start-AutopilotOOBE" PowerShell -NoL -C Start-AutopilotOOBE -Title 'OSDeploy Autopilot Registration' -GroupTag standard -Assign
+exit
+'@
+$SetCommand | Out-File -FilePath "C:\Windows\Autopilot.cmd" -Encoding ascii -Force
+#================================================
+#   PostOS
+#   Restart-Computer
+#================================================
 Restart-Computer
