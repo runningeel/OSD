@@ -28,8 +28,12 @@ Write-Host -ForegroundColor Green "Updating OSD PowerShell Module"
 Install-Module OSD -Force
 Write-Host -ForegroundColor Green "Importing OSD PowerShell Module"
 Import-Module OSD -Force
+Write-Host -ForegroundColor Green "Updating OSDProgress PowerShell Module"
+Install-Module OSDProgress -Force
+Write-Host -ForegroundColor Green "Importing OSDProgress PowerShell Module"
+Import-Module OSD -Force
 
-Start-OSDCloud @Params
+Watch-OSDCloudProvisioning { Start-OSDCloud @Params }
 
 #================================================================================================
 #   WinPE PostOS
