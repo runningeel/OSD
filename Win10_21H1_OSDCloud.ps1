@@ -27,7 +27,8 @@ if ((Get-MyComputerModel) -match 'Virtual') {
     Set-DisRes 1600
 }
 
-Watch-OSDCloudProvisioning -Window -Style Win10 -Verbose { Start-OSDCloud @Params }
+#Watch-OSDCloudProvisioning -Window -Style Win10 -Verbose { Start-OSDCloud @Params }
+Watch-OSDCloudProvisioning -Window -Style Win11 -Verbose { Start-OSDCloud @Params }
 
 #================================================================================================
 #   WinPE PostOS
