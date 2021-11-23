@@ -24,7 +24,7 @@ $Params = @{
 #Change Display Resolution for Virtual Machine
 if ((Get-MyComputerModel) -match 'Virtual') {
     Write-Host -ForegroundColor Green "Setting Display Resolution to 1600x"
-    Set-DisRes 1600
+    #Set-DisRes 1600
 }
 
 Watch-OSDCloudProvisioning -Window -Style Win10 -Verbose { Start-OSDCloud @Params }
