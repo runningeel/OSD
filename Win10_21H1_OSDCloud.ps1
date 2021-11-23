@@ -18,7 +18,7 @@ $Params = @{
     SkipAutopilot = $true
     SkipODT     = $true
     ZTI         = $true
-    Restart	= $true
+    Restart	= $false
 }
 
 #Change Display Resolution for Virtual Machine
@@ -27,8 +27,7 @@ if ((Get-MyComputerModel) -match 'Virtual') {
     Set-DisRes 1600
 }
 
-#Watch-OSDCloudProvisioning -Window -Style Win10 -Verbose { Start-OSDCloud @Params }
-Watch-OSDCloudProvisioning -Window -Style Win11 -Verbose { Start-OSDCloud @Params }
+Watch-OSDCloudProvisioning -Window -Style Win10 -Verbose { Start-OSDCloud @Params }
 
 #================================================================================================
 #   WinPE PostOS
