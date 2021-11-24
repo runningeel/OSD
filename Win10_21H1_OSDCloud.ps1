@@ -15,7 +15,7 @@ $Params = @{
     OSBuild     = $Global:OSBuild
     OSEdition   = "Enterprise"
     OSLanguage = "en-us"
-    SkipAutopilot = $true
+    SkipAutopilot = $false
     SkipODT     = $true
     ZTI         = $true
     Restart	= $false
@@ -108,5 +108,5 @@ $SetCommand | Out-File -FilePath "C:\Windows\Autopilot.cmd" -Encoding ascii -For
 #   PostOS
 #   Restart-Computer
 #================================================
-Start-Sleep -Seconds 20
-Restart-Computer
+#Start-Sleep -Seconds 20
+#Restart-Computer
